@@ -1,4 +1,5 @@
 ﻿using EmployeeManagement.Models;
+using EmployeeManagement.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -9,13 +10,40 @@ namespace EmployeeManagement.Controllers
 {
     public class HomeController : Controller
     {
-        private IEmployeeRepository _employeeReopsitory;
+        private readonly IEmployeeRepository _employeeReopsitory;
         public HomeController(IEmployeeRepository employeeRepository)
         {
             _employeeReopsitory = employeeRepository;
         }
-        public string Index() {
-            return _employeeReopsitory.GetEmployee(1).Name;
+        public ViewResult Index() {
+            var model = _employeeReopsitory.GetAllEmployee();
+            return View(model);
+        }
+        public ViewResult Details(int id)
+        {
+            HomeDetailsViewModel homeDetailsViewModel = new HomeDetailsViewModel()
+            {
+                Employee = _employeeReopsitory.GetEmployee(id),
+                PageTitle = "Employee Details"
+            };
+            return View(homeDetailsViewModel);
+        }
+
+        [HttpGet]
+        public ViewResult Create() {
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult Create(Employee employee)
+        {
+            if (ModelState.IsValid)
+            {
+                Employee newEmployee = _employeeReopsitory.Add(employee);
+                return RedirectToAction("details", new { id = newEmployee.Id });
+            }
+
+            return View();
         }
     }
 }

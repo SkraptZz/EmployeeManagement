@@ -1,8 +1,11 @@
 ﻿using EmployeeManagement.Models;
 using EmployeeManagement.ViewModels;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -11,9 +14,12 @@ namespace EmployeeManagement.Controllers
     public class HomeController : Controller
     {
         private readonly IEmployeeRepository _employeeReopsitory;
-        public HomeController(IEmployeeRepository employeeRepository)
+        private readonly IHostingEnvironment hostingEnviroment;
+
+        public HomeController(IEmployeeRepository employeeRepository, IHostingEnvironment hostingEnviroment)
         {
             _employeeReopsitory = employeeRepository;
+            this.hostingEnviroment = hostingEnviroment;
         }
         public ViewResult Index() {
             var model = _employeeReopsitory.GetAllEmployee();
@@ -35,11 +41,27 @@ namespace EmployeeManagement.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create(Employee employee)
+        public IActionResult Create(EmployeeCreateViewModel model)
         {
             if (ModelState.IsValid)
             {
-                Employee newEmployee = _employeeReopsitory.Add(employee);
+                string uniqueFileName = null;
+                if (model.Photo != null)
+                {
+                    string uploadsFolder = Path.Combine(hostingEnviroment.WebRootPath, "images");
+                    uniqueFileName = Guid.NewGuid().ToString() + "_" + model.Photo.FileName;
+                    string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                    model.Photo.CopyTo(new FileStream(filePath, FileMode.Create));
+                }
+                Employee newEmployee = new Employee { 
+                    Name = model.Name,
+                    Email = model.Email,
+                    Department = model.Department,
+                    PhotoPath = uniqueFileName
+                };
+
+                _employeeReopsitory.Add(newEmployee);
+
                 return RedirectToAction("details", new { id = newEmployee.Id });
             }
 

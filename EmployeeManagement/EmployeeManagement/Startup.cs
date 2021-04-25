@@ -1,7 +1,10 @@
 using EmployeeManagement.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,10 +27,20 @@ namespace EmployeeManagement
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
-
             services.AddDbContextPool<AppDbContext>(options => options.UseSqlServer(_config.GetConnectionString("EmployeeDBConnection")));
 
-            services.AddMvc(options => options.EnableEndpointRouting = false);
+            services.AddIdentity<IdentityUser, IdentityRole>(options =>
+            {
+                options.Password.RequiredLength = 10;
+                options.Password.RequiredUniqueChars = 3;
+            })
+                .AddEntityFrameworkStores<AppDbContext>();
+
+            services.AddMvc(options => {
+                options.EnableEndpointRouting = false;
+                var policy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+                options.Filters.Add(new AuthorizeFilter(policy));
+            });
             services.AddScoped<IEmployeeRepository, SQLEmployeeRepository>();
         }
 
@@ -38,23 +51,19 @@ namespace EmployeeManagement
             {
                 app.UseDeveloperExceptionPage();
             }
+            else
+            {
+                app.UseExceptionHandler("/Error");
+                app.UseStatusCodePagesWithReExecute("/Error/{0}");
+            }
 
             app.UseStaticFiles();
 
-            //app.UseMvcWithDefaultRoute();
+            app.UseAuthentication();
+
             app.UseMvc(routes => {
                 routes.MapRoute("default", "{controller=Home}/{action=Index}/{id?}");
             });
-
-            //app.UseRouting();
-
-            /*app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapGet("/", async context =>
-                {
-                    await context.Response.WriteAsync("Hello World!");
-                });
-            });*/
         }
     }
 }
